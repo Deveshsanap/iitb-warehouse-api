@@ -8,6 +8,8 @@ Environment variables (see .env.example):
   CORS_ALLOWED_ORIGINS             - comma-separated origins
                                    (default: http://127.0.0.1:5173,http://localhost:5173)
   SQLITE_PATH                      - SQLite DB file path (default: <project root>/db.sqlite3)
+  DATABASE_URL                     - Postgres URL when set (hosted deploys);
+                                   when absent, SQLite is used (local evaluation)
 """
 import os
 from datetime import timedelta
@@ -75,12 +77,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
+import dj_database_url
+
+DATABASES = {}
+if os.environ.get("DATABASE_URL"):
+    DATABASES["default"] = dj_database_url.parse(
+        os.environ["DATABASE_URL"], conn_max_age=600
+    )
+else:
+    DATABASES["default"] = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
     }
-}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
