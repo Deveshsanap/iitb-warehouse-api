@@ -37,6 +37,7 @@ sample pallets, and never deletes non-demo data.
 | `DJANGO_ALLOWED_HOSTS` (or `ALLOWED_HOSTS`) | `127.0.0.1,localhost` | Comma-separated. |
 | `CORS_ALLOWED_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` | Comma-separated; set to the hosted UI origin when deployed. |
 | `SQLITE_PATH` | `<repo root>/db.sqlite3` | SQLite file path (honoured for local evaluation). |
+| `DATABASE_URL` | — (SQLite used when absent) | Postgres URL for hosted deploys; when set, `dj-database-url` selects the Postgres backend instead of SQLite. |
 | `EVAL_ADMIN_USERNAME` / `EVAL_ADMIN_PASSWORD` | `demo_admin` | Demo admin account for `seed_demo`. |
 | `EVAL_AUDITOR_USERNAME` / `EVAL_AUDITOR_PASSWORD` | `demo_auditor` | Demo auditor account. |
 | `EVAL_TECHNICIAN_USERNAME` / `EVAL_TECHNICIAN_PASSWORD` | `demo_technician` | Demo technician account. |
@@ -45,8 +46,8 @@ Demo credentials: when the `EVAL_*` variables are absent, `seed_demo`
 uses the demo username as both username and password (local dev only).
 The evaluator supplies real, distinct passwords via `EVAL_*`; **never
 put real passwords in the repo, docs or test logs.** Hosted deploys use
-a persistent relational database (e.g. Postgres) instead of SQLite;
-the models and API are unchanged.
+Postgres (via `DATABASE_URL`) instead of SQLite; the models and API are
+unchanged.
 
 ## Demo accounts (usernames only — passwords are supplied separately)
 
@@ -106,7 +107,7 @@ Wrong role → 403; no/invalid token → 401.
 - **Users without a Profile** (e.g. created via Django admin) default
   to the technician role on first login.
 
-## Verification (run 27 Nov 2026, local)
+## Verification (run 27 Nov 2026, local; re-verified 28 Nov 2026)
 
 ```bash
 python manage.py check
@@ -121,14 +122,18 @@ curl http://127.0.0.1:8000/health/
 ```
 
 All checks passed on 27 Nov 2026 (see the build report for exact
-commands and outputs). No test suite is bundled with the API repo yet —
-Playwright end-to-end tests live in the UI repository and exercise this
-API over HTTP.
+commands and outputs). Re-verified 28 Nov 2026 after the
+`DATABASE_URL` change: `manage.py check` clean, `migrate --noinput`
+and `seed_demo` (run twice — no duplicates) on a fresh database, and
+`gunicorn config.wsgi:application --check-config` clean. No test suite
+is bundled with the API repo yet — Playwright end-to-end tests live in
+the UI repository and exercise this API over HTTP.
 
 ## Known limitations
 
-- SQLite locally; hosted deploys should use Postgres (set
-  `DATABASE_URL`-style config at deploy time — not yet wired; Day 2).
+- SQLite locally; hosted deploys use Postgres via `DATABASE_URL`
+  (`dj-database-url` + `psycopg`, wired in `config/settings.py`;
+  gunicorn serves the app).
 - No pagination on the admin user list (fine at this scale).
 - No shuttle status editing, battery simulation or hardware integration
   (explicitly out of scope per the brief).
